@@ -139,7 +139,7 @@ def calculate_water_intake(sex: str, weight: int, activity_level: int) -> int:
     else:
         water_intake = weight * 31
 
-    water_intake *= activity_coef
+    water_intake += water_intake * activity_coef
     water_intake = int(water_intake)
 
     return water_intake
