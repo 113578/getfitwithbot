@@ -1,12 +1,19 @@
 from aiogram import Router
-from aiogram.types import Message
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from src.states import ParametersState, UserState
-from src.utils import save_user_info
+from src.utils import save_user_data, mifflin_st_jeor, calculate_water_intake
 
 
 parameters_router = Router()
+
+sex_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text='Мужской', callback_data='male')],
+        [InlineKeyboardButton(text='Женский', callback_data='female')],
+    ]
+)
 
 
 @parameters_router.message(Command('set_profile'))
@@ -15,17 +22,45 @@ async def cmd_set_profile(message: Message, state: FSMContext) -> None:
     Начинает процесс настройки профиля пользователя.
 
     Parameters
-    ------------
+    ----------
     message : Message
         Объект сообщения, содержащий команду '/set_profile'.
     state : FSMContext
         Контекст состояния конечного автомата.
 
     Returns
-    --------
+    -------
     None
     """
-    await message.reply('Введите ваш вес (в кг)')
+    await message.reply('Выберите свой пол', reply_markup=sex_keyboard)
+    await state.set_state(ParametersState.sex)
+
+
+@parameters_router.callback_query()
+async def process_callback_query(callback_query, state: FSMContext) -> None:
+    """
+    Обрабатывает выбор пола пользователя через кнопки.
+
+    Parameters
+    ----------
+    callback_query : CallbackQuery
+        Запрос от нажатия кнопки.
+    state : FSMContext
+        Контекст состояния конечного автомата.
+
+    Returns
+    -------
+    None
+    """
+    if callback_query.data == 'male':
+        await callback_query.message.reply('Вы выбрали мужской пол')
+        sex = 'male'
+    elif callback_query.data == 'female':
+        sex = 'female'
+        await callback_query.message.reply('Вы выбрали женский пол')
+
+    await state.update_data(sex=sex)
+    await callback_query.message.reply('Введите свой вес (в кг)')
     await state.set_state(ParametersState.weight)
 
 
@@ -35,14 +70,14 @@ async def process_weight(message: Message, state: FSMContext) -> None:
     Обрабатывает ввод веса пользователя.
 
     Parameters
-    ------------
+    ----------
     message : Message
         Сообщение пользователя с введённым весом.
     state : FSMContext
         Контекст состояния конечного автомата.
 
     Returns
-    --------
+    -------
     None
     """
     try:
@@ -67,14 +102,14 @@ async def process_height(message: Message, state: FSMContext) -> None:
     Обрабатывает ввод роста пользователя.
 
     Parameters
-    ------------
+    ----------
     message : Message
         Сообщение пользователя с введённым ростом.
     state : FSMContext
         Контекст состояния конечного автомата.
 
     Returns
-    --------
+    -------
     None
     """
     try:
@@ -99,14 +134,14 @@ async def process_age(message: Message, state: FSMContext) -> None:
     Обрабатывает ввод возраста пользователя.
 
     Parameters
-    ------------
+    ----------
     message : Message
         Сообщение пользователя с введённым возрастом.
     state : FSMContext
         Контекст состояния конечного автомата.
 
     Returns
-    --------
+    -------
     None
     """
     try:
@@ -116,7 +151,13 @@ async def process_age(message: Message, state: FSMContext) -> None:
         assert age <= 100, 'Слишком высокий возраст'
 
         await state.update_data(age=age)
-        await message.answer('Сколько минут активности у вас в день?')
+        await message.answer(
+            'Насколько вы активны? Введите кол-во активных дней в неделю.\n\n'
+            '- 0 - Нет активности;\n'
+            '- 1-2 - Небольшая активность;\n'
+            '- 3-5 - Средняя активность;\n'
+            '- 6-7 - Высокая активность.'
+        )
         await state.set_state(ParametersState.activity_level)
 
     except ValueError:
@@ -131,23 +172,26 @@ async def process_activity_level(message: Message, state: FSMContext) -> None:
     Обрабатывает ввод уровня активности пользователя.
 
     Parameters
-    ------------
+    ----------
     message : Message
         Сообщение пользователя с уровнем активности.
     state : FSMContext
         Контекст состояния конечного автомата.
 
     Returns
-    --------
+    -------
     None
     """
     try:
         activity_level = int(message.text.strip())
-        assert activity_level > 0, 'Уровень активности не может быть отрицательным'
-        assert activity_level <= 1440, 'Уровень активности не может превышать один день'
+        assert activity_level >= 0, 'Уровень активности не может быть отрицательным'
+        assert activity_level <= 7, 'Уровень активности не может превышать неделю'
 
         await state.update_data(activity_level=activity_level)
-        await message.answer('В каком городе вы находитесь?')
+        await message.answer(
+            'В каком городе вы находитесь?\n'
+            'Эта информация понадобится для расчёта потребления воды.'
+        )
         await state.set_state(ParametersState.city)
 
     except ValueError:
@@ -162,14 +206,14 @@ async def process_city(message: Message, state: FSMContext) -> None:
     Обрабатывает ввод города пользователя.
 
     Parameters
-    ------------
+    ----------
     message : Message
         Сообщение пользователя с названием города.
     state : FSMContext
         Контекст состояния конечного автомата.
 
     Returns
-    --------
+    -------
     None
     """
     try:
@@ -177,7 +221,24 @@ async def process_city(message: Message, state: FSMContext) -> None:
         assert city, 'Город должен быть заполнен'
 
         await state.update_data(city=city)
-        await message.answer('Введите свою цель по калориям')
+
+        user_data = await state.get_data()
+        calories_needed = mifflin_st_jeor(
+            sex=user_data.get('sex'),
+            weight=user_data.get('weight'),
+            height=user_data.get('height'),
+            age=user_data.get('age'),
+            activity_level=user_data.get('activity_level')
+        )
+
+        await message.answer(
+            f'В покое вы тратите {calories_needed} ккал.\n\n'
+            'Введите свою цель по калориям.\n\n'
+            'Подсказка:\n'
+            f'- {calories_needed + 250} ккал. для набора веса;\n'
+            f'- {calories_needed - 250} ккал. для сброса веса.'
+        )
+
         await state.set_state(ParametersState.calorie_goal)
 
     except AssertionError as e:
@@ -190,14 +251,14 @@ async def process_calorie_goal(message: Message, state: FSMContext) -> None:
     Обрабатывает ввод цели по калориям пользователя.
 
     Parameters
-    ------------
+    ----------
     message : Message
         Сообщение пользователя с целью по калориям.
     state : FSMContext
         Контекст состояния конечного автомата.
 
     Returns
-    --------
+    -------
     None
     """
     try:
@@ -205,7 +266,18 @@ async def process_calorie_goal(message: Message, state: FSMContext) -> None:
         assert calorie_goal > 0, 'Цель по калориям не может быть отрицательной'
 
         await state.update_data(calorie_goal=calorie_goal)
-        await message.answer('Введите свою цель по воде')
+
+        user_data = await state.get_data()
+        water_intake = calculate_water_intake(
+            sex=user_data.get('sex'),
+            weight=user_data.get('weight'),
+            activity_level=user_data.get('activity_level')
+        )
+
+        await message.answer(
+            'Введите свою цель по воде.'
+            f'Подсказка: в день вам необходимо {water_intake} мл. воды.\n'
+        )
         await state.set_state(ParametersState.water_goal)
 
     except ValueError:
@@ -220,14 +292,14 @@ async def process_calories_goal(message: Message, state: FSMContext) -> None:
     Обрабатывает ввод цели по воде пользователя.
 
     Parameters
-    ------------
+    ----------
     message : Message
         Сообщение пользователя с целью по воде.
     state : FSMContext
         Контекст состояния конечного автомата.
 
     Returns
-    --------
+    -------
     None
     """
     try:
@@ -249,20 +321,21 @@ async def process_saving_parameters(message: Message, state: FSMContext) -> None
     Сохраняет параметры профиля пользователя.
 
     Parameters
-    ------------
+    ----------
     message : Message
         Сообщение пользователя.
     state : FSMContext
         Контекст состояния конечного автомата.
 
     Returns
-    --------
+    -------
     None
     """
     user_data = await state.get_data()
 
-    user_info = UserState(
+    user_data = UserState(
         user_id=message.from_user.id,
+        sex=user_data.get('sex'),
         weight=user_data.get('weight'),
         height=user_data.get('height'),
         age=user_data.get('age'),
@@ -275,17 +348,17 @@ async def process_saving_parameters(message: Message, state: FSMContext) -> None
         burned_calories=0
     )
 
-    save_user_info(user_info=user_info)
+    save_user_data(user_data=user_data)
 
     summary = (
         'Ваш профиль:\n\n'
-        f'Вес: {user_info.weight} кг\n'
-        f'Рост: {user_info.height} см\n'
-        f'Возраст: {user_info.age} лет\n'
-        f'Активность: {user_info.activity_level} минут\n'
-        f'Город: {user_info.city}\n'
-        f'Цель по калориям: {user_info.calorie_goal} ккал\n'
-        f'Цель по воде: {user_info.water_goal} мл'
+        f'Вес: {user_data.weight} кг\n'
+        f'Рост: {user_data.height} см\n'
+        f'Возраст: {user_data.age} лет\n'
+        f'Активность: {user_data.activity_level} минут\n'
+        f'Город: {user_data.city}\n'
+        f'Цель по калориям: {user_data.calorie_goal} ккал\n'
+        f'Цель по воде: {user_data.water_goal} мл'
     )
 
     await message.answer(summary)

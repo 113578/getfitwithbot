@@ -4,6 +4,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 class UserState(BaseModel):
     user_id: int
+    sex: str
     weight: int
     height: int
     age: int
@@ -17,6 +18,7 @@ class UserState(BaseModel):
 
 
 class ParametersState(StatesGroup):
+    sex = State()
     weight = State()
     height = State()
     age = State()
