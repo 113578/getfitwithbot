@@ -6,7 +6,8 @@ from src.utils import (
     load_user_data,
     get_temperature,
     mifflin_st_jeor,
-    calculate_water_intake
+    calculate_water_intake,
+    save_user_data
 )
 
 
@@ -57,6 +58,7 @@ async def cmd_help(message: Message) -> None:
         '/log_food <еда и кол-во еды в свободной форме> - Отслеживание еды\n'
         '/log_workout <тип тренировки> <продолжительность, мин.>- Отслеживание тренировок\n'
         '/check_progress - Прогресс\n'
+        '/clear_progress - Очистка прогресса\n'
         '/temperature - Получение температуры в вашем городе'
     )
 
@@ -178,6 +180,39 @@ async def cmd_temperature(message: Message) -> None:
                 f'Температура в городе {city}: {temperature}°C.\n'
                 'Дополнительного потребления воды не нужно.'
             )
+
+    except FileNotFoundError:
+        await message.reply(
+            'Вы ещё не заполнили свой профиль!\n'
+            'Используйте команду /set_profile'
+        )
+
+
+@general_router.message(Command('clear_progress'))
+async def cmd_clear_progress(message: Message) -> None:
+    """
+    Обрабатывает команду '/clear_progress' и очищает прогресс пользователя.
+
+    Parameters
+    ----------
+    message : Message
+        Объект сообщения, содержащий команду '/clear_progress'.
+
+    Returns
+    -------
+    None
+    """
+    user_id = message.from_user.id
+
+    try:
+        user_data = load_user_data(user_id=user_id)
+        user_data.logged_water = 0
+        user_data.logged_calories = 0
+        user_data.burned_calories = 0
+
+        save_user_data(user_data=user_data)
+
+        await message.answer('Прогресс очищен!')
 
     except FileNotFoundError:
         await message.reply(

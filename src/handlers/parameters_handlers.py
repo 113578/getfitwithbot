@@ -275,8 +275,8 @@ async def process_calorie_goal(message: Message, state: FSMContext) -> None:
         )
 
         await message.answer(
-            'Введите свою цель по воде.'
-            f'Подсказка: в день вам необходимо {water_intake} мл. воды.\n'
+            'Введите свою цель по воде.\n'
+            f'Подсказка: в день вам необходимо {water_intake} мл. воды.'
         )
         await state.set_state(ParametersState.water_goal)
 

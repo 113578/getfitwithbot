@@ -166,7 +166,10 @@ async def cmd_log_workout(message: Message, command: CommandObject) -> None:
             )
 
     except (ValueError, TypeError, AttributeError):
-        await message.answer('Значения должны быть в виде <тренировка> <продолжительность, мин.>')
+        await message.answer(
+            'Значения должны быть в виде <тренировка> <продолжительность, мин.>\n'
+            'Либо такого вида тренировки не найдено!'
+        )
     except AssertionError as e:
         await message.answer(f'{e}! Попробуйте ещё раз.')
     except FileNotFoundError:
