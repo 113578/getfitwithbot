@@ -22,7 +22,7 @@ docker build -t getfitwithbot .
 ```
 3. Run the container:
 ```
-docker run -d --env-file .env getfitwithbot
+docker run -d -v $(pwd)/users:/usr/local/app/users --env-file .env --name getfitwithbot getfitwithbot
 ```
 ## Deployed bot
 ![deployed_bot](materials/deployed_bot.png)
