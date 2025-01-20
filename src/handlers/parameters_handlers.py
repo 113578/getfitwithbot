@@ -2,9 +2,14 @@ from aiogram import Router
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from config.conifg import OPENWEATHERMAP_TOKEN
 from src.states import ParametersState, UserState
-from src.utils import save_user_data, mifflin_st_jeor, calculate_water_intake
-
+from src.utils import (
+    save_user_data,
+    mifflin_st_jeor,
+    calculate_water_intake,
+    get_temperature
+)
 
 parameters_router = Router()
 
@@ -273,11 +278,22 @@ async def process_calorie_goal(message: Message, state: FSMContext) -> None:
             weight=user_data.get('weight'),
             activity_level=user_data.get('activity_level')
         )
-
-        await message.answer(
-            'Введите свою цель по воде.\n'
-            f'Подсказка: в день вам необходимо {water_intake} мл. воды.'
+        temperature = await get_temperature(
+            city=user_data.get('city'),
+            api_key=OPENWEATHERMAP_TOKEN
         )
+
+        if temperature >= 25:
+            await message.answer(
+                'Введите свою цель по воде.\n'
+                f'Внимание! Сегодня жарко: в день вам необходимо {water_intake + 500} мл. воды.\n'
+            )
+        else:
+            await message.answer(
+                'Введите свою цель по воде.\n'
+                f'Подсказка: в день вам необходимо {water_intake} мл. воды.'
+            )
+
         await state.set_state(ParametersState.water_goal)
 
     except ValueError:
