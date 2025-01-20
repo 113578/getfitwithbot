@@ -1,5 +1,7 @@
-# GetFit with Bot!
+# GetFit with Bot (@getfitwithbot)!
 A Telegram bot for tracking calories, water, workouts.
+
+Link: **@getfitwithbot**
 
 # Screencast
 ![screencast](materials/screencast.gif)
