@@ -1,10 +1,10 @@
-import logging
+from loguru import logger
 from aiogram import BaseMiddleware
 from aiogram.types import Message
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger.remove()
+logger.add(lambda msg: print(msg, end=''), level='INFO', format='{time} {level} {message}')
 
 
 class LoggingMiddleware(BaseMiddleware):
