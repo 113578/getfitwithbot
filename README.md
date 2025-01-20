@@ -22,3 +22,5 @@ docker build -t getfitwithbot .
 ```
 docker run -d --env-file .env getfitwithbot
 ```
+## Deployed bot
+![deployed_bot](materials/deployed_bot.png)
