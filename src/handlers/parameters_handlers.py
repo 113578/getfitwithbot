@@ -307,59 +307,41 @@ async def process_calories_goal(message: Message, state: FSMContext) -> None:
         assert water_goal > 0, 'Цель по воде не может быть отрицательной'
 
         await state.update_data(water_goal=water_goal)
-        await state.set_state(ParametersState.saving_parameters)
+
+        user_data = await state.get_data()
+
+        user_data = UserState(
+            user_id=message.from_user.id,
+            sex=user_data.get('sex'),
+            weight=user_data.get('weight'),
+            height=user_data.get('height'),
+            age=user_data.get('age'),
+            activity_level=user_data.get('activity_level'),
+            city=user_data.get('city'),
+            calorie_goal=user_data.get('calorie_goal'),
+            water_goal=user_data.get('water_goal'),
+            logged_water=0,
+            logged_calories=0,
+            burned_calories=0
+        )
+
+        save_user_data(user_data=user_data)
+
+        summary = (
+            'Ваш профиль:\n\n'
+            f'Вес: {user_data.weight} кг\n'
+            f'Рост: {user_data.height} см\n'
+            f'Возраст: {user_data.age} лет\n'
+            f'Активность: {user_data.activity_level} минут\n'
+            f'Город: {user_data.city}\n'
+            f'Цель по калориям: {user_data.calorie_goal} ккал\n'
+            f'Цель по воде: {user_data.water_goal} мл'
+        )
+
+        await message.answer(summary)
+        await state.clear()
 
     except ValueError:
         await message.answer('Цель по воде должна быть числовым значением! Попробуйте ещё раз.')
     except AssertionError as e:
         await message.answer(f'{e}! Попробуйте ещё раз.')
-
-
-@parameters_router.message(ParametersState.saving_parameters)
-async def process_saving_parameters(message: Message, state: FSMContext) -> None:
-    """
-    Сохраняет параметры профиля пользователя.
-
-    Parameters
-    ----------
-    message : Message
-        Сообщение пользователя.
-    state : FSMContext
-        Контекст состояния конечного автомата.
-
-    Returns
-    -------
-    None
-    """
-    user_data = await state.get_data()
-
-    user_data = UserState(
-        user_id=message.from_user.id,
-        sex=user_data.get('sex'),
-        weight=user_data.get('weight'),
-        height=user_data.get('height'),
-        age=user_data.get('age'),
-        activity_level=user_data.get('activity_level'),
-        city=user_data.get('city'),
-        calorie_goal=user_data.get('calorie_goal'),
-        water_goal=user_data.get('water_goal'),
-        logged_water=0,
-        logged_calories=0,
-        burned_calories=0
-    )
-
-    save_user_data(user_data=user_data)
-
-    summary = (
-        'Ваш профиль:\n\n'
-        f'Вес: {user_data.weight} кг\n'
-        f'Рост: {user_data.height} см\n'
-        f'Возраст: {user_data.age} лет\n'
-        f'Активность: {user_data.activity_level} минут\n'
-        f'Город: {user_data.city}\n'
-        f'Цель по калориям: {user_data.calorie_goal} ккал\n'
-        f'Цель по воде: {user_data.water_goal} мл'
-    )
-
-    await message.answer(summary)
-    await state.clear()
