@@ -76,20 +76,28 @@ async def cmd_list_profile(message: Message) -> None:
     None
     """
     user_id = message.from_user.id
-    user_data = load_user_data(user_id=user_id)
 
-    summary = (
-        'Ваш профиль:\n\n'
-        f'Вес: {user_data.weight} кг\n'
-        f'Рост: {user_data.height} см\n'
-        f'Возраст: {user_data.age} лет\n'
-        f'Активность: {user_data.activity_level} минут\n'
-        f'Город: {user_data.city}\n'
-        f'Цель по калориям: {user_data.calorie_goal} ккал\n'
-        f'Цель по воде: {user_data.water_goal} мл\n'
-    )
+    try:
+        user_data = load_user_data(user_id=user_id)
 
-    await message.reply(summary)
+        summary = (
+            'Ваш профиль:\n\n'
+            f'Вес: {user_data.weight} кг\n'
+            f'Рост: {user_data.height} см\n'
+            f'Возраст: {user_data.age} лет\n'
+            f'Активность: {user_data.activity_level} минут\n'
+            f'Город: {user_data.city}\n'
+            f'Цель по калориям: {user_data.calorie_goal} ккал\n'
+            f'Цель по воде: {user_data.water_goal} мл\n'
+        )
+
+        await message.reply(summary)
+
+    except FileNotFoundError:
+        await message.reply(
+            'Вы ещё не заполнили свой профиль!\n'
+            'Используйте команду /set_profile'
+        )
 
 
 @general_router.message(Command('calculate'))
@@ -107,26 +115,33 @@ async def cmd_calculate(message: Message) -> None:
     None
     """
     user_id = message.from_user.id
-    user_data = load_user_data(user_id=user_id)
 
-    calories_needed = mifflin_st_jeor(
-        sex=user_data.sex,
-        weight=user_data.weight,
-        height=user_data.height,
-        age=user_data.age,
-        activity_level=user_data.activity_level
-    )
-    water_intake = calculate_water_intake(
-        sex=user_data.sex,
-        weight=user_data.weight,
-        activity_level=user_data.activity_level
-    )
+    try:
+        user_data = load_user_data(user_id=user_id)
 
-    await message.reply(
-        f'В покое вы тратите {calories_needed} ккал в день.\n'
-        f'В день вам необходимо {water_intake} мл воды.'
-    )
+        calories_needed = mifflin_st_jeor(
+            sex=user_data.sex,
+            weight=user_data.weight,
+            height=user_data.height,
+            age=user_data.age,
+            activity_level=user_data.activity_level
+        )
+        water_intake = calculate_water_intake(
+            sex=user_data.sex,
+            weight=user_data.weight,
+            activity_level=user_data.activity_level
+        )
 
+        await message.reply(
+            f'В покое вы тратите {calories_needed} ккал в день.\n'
+            f'В день вам необходимо {water_intake} мл воды.'
+        )
+
+    except FileNotFoundError:
+        await message.reply(
+            'Вы ещё не заполнили свой профиль!\n'
+            'Используйте команду /set_profile'
+        )
 
 @general_router.message(Command('temperature'))
 async def cmd_temperature(message: Message) -> None:
@@ -143,20 +158,29 @@ async def cmd_temperature(message: Message) -> None:
     None
     """
     user_id = message.from_user.id
-    user_data = load_user_data(user_id=user_id)
-    city = user_data.city
 
-    temperature = await get_temperature(
-        city=city,
-        api_key=OPENWEATHERMAP_TOKEN
-    )
-    if temperature >= 25:
-        await message.reply(
-            f'Температура в городе {city}: {temperature}°C.\n'
-            'Жарко, сконцентрируйтесь на потреблении воды!'
+    try:
+        user_data = load_user_data(user_id=user_id)
+        city = user_data.city
+
+        temperature = await get_temperature(
+            city=city,
+            api_key=OPENWEATHERMAP_TOKEN
         )
-    else:
+
+        if temperature >= 25:
+            await message.reply(
+                f'Температура в городе {city}: {temperature}°C.\n'
+                'Жарко, сконцентрируйтесь на потреблении воды!'
+            )
+        else:
+            await message.reply(
+                f'Температура в городе {city}: {temperature}°C.\n'
+                'Дополнительного потребления воды не нужно.'
+            )
+
+    except FileNotFoundError:
         await message.reply(
-            f'Температура в городе {city}: {temperature}°C.\n'
-            'Дополнительного потребления воды не нужно.'
+            'Вы ещё не заполнили свой профиль!\n'
+            'Используйте команду /set_profile'
         )

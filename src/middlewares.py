@@ -1,10 +1,11 @@
+import sys
 from loguru import logger
 from aiogram import BaseMiddleware
 from aiogram.types import Message
 
 
 logger.remove()
-logger.add(lambda msg: print(msg, end=''), level='INFO', format='{time} {level} {message}')
+logger.add(sys.stdout, level='INFO', format='{time} {level} {message}')
 
 
 class LoggingMiddleware(BaseMiddleware):

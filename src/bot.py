@@ -6,7 +6,7 @@ from src.handlers import (
     logging_router,
     parameters_router
 )
-from src.middlewares import LoggingMiddleware
+from src.middlewares import logger, LoggingMiddleware
 
 
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -26,7 +26,7 @@ async def main() -> None:
     --------
     None
     """
-    print('Telegram-бот запущен.')
+    logger.info('Telegram-бот запущен.')
     await dp.start_polling(bot)
 
 if __name__ == '__main__':

@@ -56,6 +56,11 @@ async def cmd_log_water(message: Message, command: CommandObject) -> None:
         await message.answer('Кол-во воды должно быть числовым значением! Попробуйте ещё раз.')
     except AssertionError as e:
         await message.answer(f'{e}! Попробуйте ещё раз.')
+    except FileNotFoundError:
+        await message.reply(
+            'Вы ещё не заполнили свой профиль!\n'
+            'Используйте команду /set_profile'
+        )
 
 
 @logging_router.message(Command('log_food'))
@@ -102,6 +107,13 @@ async def cmd_log_food(message: Message, command: CommandObject) -> None:
 
     except AssertionError as e:
         await message.answer(f'{e}! Попробуйте ещё раз.')
+    except KeyError:
+        await message.answer('Ничего не нашёл, попробуйте переформулировать запрос.')
+    except FileNotFoundError:
+        await message.reply(
+            'Вы ещё не заполнили свой профиль!\n'
+            'Используйте команду /set_profile'
+        )
 
 
 @logging_router.message(Command('log_workout'))
@@ -153,10 +165,15 @@ async def cmd_log_workout(message: Message, command: CommandObject) -> None:
                 f'Сожжено: {burned_calories} ккал. Вы достигли дневной цели!'
             )
 
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
         await message.answer('Значения должны быть в виде <тренировка> <продолжительность, мин.>')
     except AssertionError as e:
         await message.answer(f'{e}! Попробуйте ещё раз.')
+    except FileNotFoundError:
+        await message.reply(
+            'Вы ещё не заполнили свой профиль!\n'
+            'Используйте команду /set_profile'
+        )
 
 
 @logging_router.message(Command('check_progress'))
@@ -173,15 +190,23 @@ async def cmd_check_progress(message: Message) -> None:
     -------
     None
     """
-    user_data = load_user_data(user_id=message.from_user.id)
+    user_id = message.from_user.id
 
-    await message.reply(
-        '📊 Прогресс:\n\n'
-        'Вода:\n'
-        f'- Выпито: {user_data.logged_water} мл. из {user_data.water_goal} мл.\n'
-        f'- Осталось: {user_data.water_goal - user_data.logged_water} мл.\n'
-        'Калории:\n'
-        f'- Потреблено: {user_data.logged_calories} ккал. из {user_data.calorie_goal} ккал.\n'
-        f'- Сожжено: {user_data.burned_calories} ккал.\n'
-        f'- Осталось: {user_data.calorie_goal - user_data.logged_calories} ккал.\n'
-    )
+    try:
+        user_data = load_user_data(user_id=user_id)
+
+        await message.reply(
+            '📊 Прогресс:\n\n'
+            'Вода:\n'
+            f'- Выпито: {user_data.logged_water} мл. из {user_data.water_goal} мл.\n'
+            f'- Осталось: {user_data.water_goal - user_data.logged_water} мл.\n'
+            'Калории:\n'
+            f'- Потреблено: {user_data.logged_calories} ккал. из {user_data.calorie_goal} ккал.\n'
+            f'- Сожжено: {user_data.burned_calories} ккал.\n'
+            f'- Осталось: {user_data.calorie_goal - user_data.logged_calories} ккал.\n'
+        )
+    except FileNotFoundError:
+        await message.reply(
+            'Вы ещё не заполнили свой профиль!\n'
+            'Используйте команду /set_profile'
+        )
